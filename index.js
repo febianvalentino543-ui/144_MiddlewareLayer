@@ -118,3 +118,12 @@ function validateParams(shema) {
     }
 }
 
+//Method Get
+app.get('/', async (req, re) => {
+    const result = await pool.query(
+        'SELECT * FROM biodata ORDER BY id'
+    )
+
+    return successResponse(res, 'Data Berhasil Diambil', result.rows)   
+})
+
