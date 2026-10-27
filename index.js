@@ -92,3 +92,29 @@ function validateBody(schema) {
     }
 }
 
+//Midleware validation Parameter
+function validateParams(shema) {
+    return (req, res, next) => {
+        const {error, value} = schema.validate(req.params, {
+            abortEarly: false,
+            convert: true,
+            allowUnknown: false,
+        })
+
+        if (error) {
+            return errorResponse(
+                res,
+                'validasi Input Gagal',
+                400,
+                error.details.map(item => ({
+                    field: item.path.join('.'),
+                    message: item.message,
+                }))
+            )
+        }
+
+        req.params = value
+        next()
+    }
+}
+
