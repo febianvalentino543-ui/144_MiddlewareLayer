@@ -10,32 +10,30 @@ const pool = new Pool({
     user: 'postgres',
     host: 'localhost',
     database: 'Mahasiswa',
-    password: '141414', //sesuaikan dengan password database masing masing
-    port: 5432,
+    password: '141414',
+    port: 5432
 })
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-//Middleware
 app.use((req, res, next) => {
     const start = Date.now()
-
-    res.on('finish', () => {
+    
+    req.on('finish', () => {
         const duration = Date.now() - start
 
         console.log({
             method: req.method,
             url: req.originalUrl,
             status: res.statusCode,
-            duration: `${duration}ms`,
+            duration: `${duration}ms`
         })
     })
 
-    next ()
+    next()
 })
 
-// respon envelope
 function successResponse(res, message, data, status = 200) {
     return res.status(status).json({
         success: true,
@@ -45,7 +43,7 @@ function successResponse(res, message, data, status = 200) {
     })
 }
 
-function errorResponse(res, message, error, status = 500) {
+function errorResponse(res, message, status = 500, details = null) {
     return res.status(status).json({
         success: false,
         message,
@@ -54,8 +52,7 @@ function errorResponse(res, message, error, status = 500) {
     })
 }
 
-//JOI Validation
-const biodataschema = Joi.object({
+const biodataSchema = Joi.object({
     id: Joi.number().integer().positive(),
     nama: Joi.string().trim().min(2).max(100).required(),
     nim: Joi.string().trim().min(5).max(20).required(),
@@ -63,13 +60,12 @@ const biodataschema = Joi.object({
 })
 
 const idSchema = Joi.object({
-    id: Joi.number().integer().positive().required(),
+    id: Joi.number().integer().positive().required()
 })
 
-//Middleware Validation Body
 function validateBody(schema) {
     return (req, res, next) => {
-        const {error, value} = schema.validate(req.body, {
+        const { error, value } = schema.validate(req.body, {
             abortEarly: false,
             convert: true,
             allowUnknown: false,
@@ -78,7 +74,7 @@ function validateBody(schema) {
         if (error) {
             return errorResponse(
                 res,
-                'validasi Input Gagal',
+                'validasi input gagal',
                 400,
                 error.details.map(item => ({
                     field: item.path.join('.'),
@@ -92,10 +88,9 @@ function validateBody(schema) {
     }
 }
 
-//Midleware validation Parameter
-function validateParams(shema) {
+function validateParams(schema) {
     return (req, res, next) => {
-        const {error, value} = schema.validate(req.params, {
+        const { error, value } = schema.validate(req.params, {
             abortEarly: false,
             convert: true,
             allowUnknown: false,
@@ -104,7 +99,7 @@ function validateParams(shema) {
         if (error) {
             return errorResponse(
                 res,
-                'validasi Input Gagal',
+                'parameter tidak valid',
                 400,
                 error.details.map(item => ({
                     field: item.path.join('.'),
@@ -118,31 +113,28 @@ function validateParams(shema) {
     }
 }
 
-//Method Get
-app.get('/', async (req, re) => {
+app.get('/', async (req, res) => {
     const result = await pool.query(
         'SELECT * FROM biodata ORDER BY id'
     )
 
-    return successResponse(res, 'Data Berhasil Diambil', result.rows)   
+    return successResponse(res, 'Data berhasil diambil', result.rows)
 })
 
-//method post
 app.post(
     '/biodata',
     validateBody(biodataSchema),
     async (req, res) => {
         const { id, nama, nim, kelas } = req.body
-
         const result = await pool.query(
             `INSERT INTO biodata (id, nama, nim, kelas)
             VALUES ($1, $2, $3, $4)
-            RETURNING *,`,
+            RETURNING *`,
             [id ?? null, nama, nim, kelas]
         )
 
         return successResponse(
-            res,
+            res, 
             'Data berhasil ditambahkan',
             result.rows[0],
             201
@@ -165,14 +157,13 @@ app.put(
             `UPDATE biodata
             SET nama = $1, nim = $2, kelas = $3
             WHERE id = $4
-            RETURNING *,`,
+            RETURNING *`,
             [nama, nim, kelas, id]
         )
 
         if (result.rowCount === 0) {
             return errorResponse(
-                res,
-                'Data tidak ditemukan', 404
+                res, 'Datanya ga ketemu', 404
             )
         }
 
@@ -191,13 +182,12 @@ app.delete(
         const { id } = req.params
 
         const result = await pool.query(
-            `DELETE FROM biodata WHERE id = $1 RETURNING *,`,
+            `DELETE FROM biodata WHERE id = $1 RETURNING *`,
             [id]
         )
-
         if (result.rowCount === 0) {
             return errorResponse(
-                res, 'Data tidak ditemukan', 404
+                res, 'Datanya ga ketemu', 404
             )
         }
 
@@ -205,24 +195,22 @@ app.delete(
             res,
             'Data berhasil dihapus',
             result.rows[0]
-        )
+        )   
     }
 )
 
-// ROUTE TIDAK DITEMUKAN
 app.use((req, res) => {
     return errorResponse(
         res,
-        'Endpoint tidak ditemukan',
+        'Endpoint ga ketemu',
         404
     )
 })
 
-// GLOBAL ERROR HANDLER
 app.use((err, req, res, next) => {
     console.error(err)
 
-    if (res.headersSent) {
+    if (res.headerSent) {
         return next(err)
     }
 
@@ -234,5 +222,5 @@ app.use((err, req, res, next) => {
 })
 
 app.listen(port, () => {
-    console.log(`App running on port ${port}`)
+    console.log(`App running in port ${port}.`)
 })
